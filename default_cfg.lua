@@ -71,9 +71,6 @@ local c = {
 
 	mod = {
 		http = {
-			-- allow connection to local hosts
-			allow_local = false,
-
 			-- "Temporary failure" and stuff on error
 			expose_error = true,
 
