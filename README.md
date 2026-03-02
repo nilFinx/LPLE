@@ -40,6 +40,8 @@ WARNING: This has been uploaded publicly for sake of tracking my progress, and b
 
 Do NOT use any third party instanced of LiquidProxy, unless you trust them. Due to nature of TLS MitM proxies, the server owner is able to see everything that goes through the proxy. HTTPS WEBSITES WILL STILL BE INTERCEPTED! THERE IS NO WAY TO DEFEND AGAINST THIS RISK, OTHER THAN TO HOST YOUR OWN PROXY.
 
+Exposed servers = all local IPs are exposed. Fix on that is planned but isn't here yet.
+
 ## Documentation
 
 Documentation is available in [docs](./docs/install.md). Alternatively, use [my website](https://recycledplist.space/projects/liquidproxy/install) like before.
