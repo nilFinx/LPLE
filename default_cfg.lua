@@ -12,9 +12,10 @@ local c = {
 	key = "key.pem",
 	cert = "cert.pem",
 
-	timeout = 10000, -- ms, not guaranteed to be enforced everywhere
-
+	---@type string?
+	-- Host to bind to
 	host = nil,
+
 	-- nil any of this to disable
 	ports = {
 		http = {
@@ -44,53 +45,52 @@ local c = {
 
 	-- TLS/SSL version limits. min is immediately applied, while max is always latest. When handshake ends and the client supports something above max, the pipe will be killed.
 	secure = {
-		---@type ver
-		-- min always cuts conection
-		min = "TLSv1",
+		tls = {
+			---@type ver
+			-- min always cuts conection
+			min = "TLSv1",
 
-		---@type ver
-		max = "TLSv1.2",
+			---@type ver
+			max = "TLSv1.2",
 
-		-- Instead of being a limit, use it to immediately pass auth
-		pass_auth = true,
-	},
-
-	http = {
-		auth = {
-			require = true,
-
-			basic = {
+			-- Instead of being a limit, use it to immediately pass auth
+			pass_auth = true,
+		},
+		mod = {
+			http = {
 				username = "lp",
 				password = nil,
 				-- Verify username if given, don't otherwise
 				require_username = false
 			}
-		},
+		}
+	},
 
-		https = true,
+	mod = {
+		http = {
+			-- allow connection to local hosts
+			allow_local = false,
 
-		-- allow connection to local hosts
-		allow_local = false,
+			-- "Temporary failure" and stuff on error
+			expose_error = true,
 
-		-- "Temporary failure" and stuff on error
-		expose_error = true,
+			-- Set http.webui or http.webui.hosts to nil to disable
+			webui = {
+				-- Body of when your request gets denied (either proxyless or fail2ban)
+				forbidden_response = "403 Forbidden",
 
-		-- Set http.webui or http.webui.hosts to nil to disable
-		webui = {
-			-- Body of when your request gets denied (either proxyless or fail2ban)
-			forbidden_response = "403 Forbidden",
+				---@type table<string>
+				hosts = {
+					"lp.r.e.a.l",
+					"lp.real.com",
+					"liquidproxy.r.e.a.l"
+				},
 
-			---@type table<string>
-			hosts = {
-				"lp.r.e.a.l",
-				"lp.real.com",
-				"liquidproxy.r.e.a.l"
+				-- Allow connection by hitting ip:port, not a specified webUI host through proxy
+				proxyless = false
 			},
-
-			-- Allow connection by hitting ip:port, not a specified webUI host through proxy
-			proxyless = false
-		},
-	}
+		}
+	},
 }
 
 return c
