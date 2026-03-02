@@ -1,6 +1,18 @@
 ---@type luvit.http
 local http = require "http"
 
+---@param req luvit.http.IncomingMessage
+function HTTPAuth(req)
+	if cfg.http.auth then
+		local a = req.headers["Proxy-Authentication"] or req.headers["Authentication"]
+		if a then
+			p(a)
+		end
+	end
+
+	return false
+end
+
 function Ver2Num(ver)
 	if ver:sub(1,4) == "TLSv" then
 		return tonumber(ver:sub(5))
@@ -9,8 +21,10 @@ function Ver2Num(ver)
 	end
 end
 
----@diagnostic disable-next-line deprecated
-local webui, wus = (table.unpack or unpack)(require "app.http.webui")
+local webui, wus
+if cfg.http.webui and cfg.http.webui.hosts then
+	local webui, wus = (table.unpack or unpack)(require "app.http.webui")
+end
 local plainproxy = require "app.http.plain"
 local connectproxy = require "app.http.connect"
 
@@ -41,13 +55,13 @@ end
 local function onReq(req, res)
 	local suc, err = xpcall(function()
 		if req.method == "CONNECT" then
-			if table.has(cfg.http.webui.hosts, req.url:match("(.-):443")) then
+			if wus and table.has(cfg.http.webui.hosts, req.url:match("(.-):443")) then
 				wus(req, res) return
 			end
 			connectproxy(req, res)
 		else
 			if req.url:sub(1, 7) == "http://" then -- This can never be HTTPS
-				if table.has(cfg.http.webui.hosts, req.url:sub(8):match("(.-)/")) then
+				if webui and table.has(cfg.http.webui.hosts, req.url:sub(8):match("(.-)/")) then
 					webui(req, res) return
 				end
 				plainproxy(req, res)
