@@ -4,7 +4,7 @@ local tls = require "tls"
 -- Keeping for later
 --local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
 
-local minver, maxver = Ver2Num(cfg.secure.min), Ver2Num((cfg.secure.max))
+local minver, maxver = Ver2Num(cfg.secure.tls.min), Ver2Num((cfg.secure.tls.min))
 
 local errs = {
 	EAI_NONAME = {404, "Cannot resolve host"},

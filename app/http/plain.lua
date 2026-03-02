@@ -52,7 +52,7 @@ return function (req, res)
 		res:finish(body)]]
 	else
 		res.statusCode = 502
-		if cfg.http.expose_error then
+		if cfg.mod.http.expose_error then
 			local et = "LiquidProxy: "..(uverrs[rs] or rs).."\r\n"
 			res.headers["Content-Type"] = "text/plain"
 		else
