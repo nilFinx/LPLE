@@ -52,6 +52,9 @@ local c = {
 
 			-- Instead of being a limit, use it to immediately pass auth
 			pass_auth = true,
+
+			-- Request a client certificate to be used
+			request_cert = false,
 		},
 		mod = {
 			http = {
