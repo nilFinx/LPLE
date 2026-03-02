@@ -6,6 +6,7 @@ require "util"
 
 _G.fs = require "fs"
 
+---@class config
 _G.cfg = require "default_cfg"
 if fs.existsSync "cfg.lua" then
     if not pcall(function() require "cfg" end) then
@@ -25,7 +26,13 @@ end
 
 require "app.cert"
 
-require "app.http"
+if cfg.mod.http then
+    require "app.http"
+end
+
+if not next(stack) then
+    print "Nothing to do! Did you disable all plugins?"
+end
 
 for name, tbl in pairs(stack) do
     local t = name.." proxy started ("

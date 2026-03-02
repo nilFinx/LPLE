@@ -16,6 +16,7 @@ local c = {
 	-- Host to bind to
 	host = nil,
 
+	---@type table<string,table<string,integer>>
 	-- nil any of this to disable
 	ports = {
 		http = {
@@ -63,7 +64,13 @@ local c = {
 				-- Verify username if given, don't otherwise
 				require_username = false
 			}
-		}
+		},
+
+		---@type table<string>
+		-- all usernames below will be allowed to connect, if the list isn't empty. ALL OTHER ACCOUNTS ARE BLOCKED.
+		-- Format is username@server. 
+		-- For XMPP, it is always username@example.com, but for mail, it could be username@example.com or username (not mail.example.com).
+		username_whitelist = {}
 	},
 
 	mod = {
