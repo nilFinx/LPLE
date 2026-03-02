@@ -12,10 +12,6 @@ local c = {
 	key = "key.pem",
 	cert = "cert.pem",
 
-	---@type string?
-	-- Host to bind to
-	host = nil,
-
 	---@type table<string,table<string,integer>>
 	-- nil any of this to disable
 	ports = {
