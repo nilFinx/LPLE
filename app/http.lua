@@ -1,5 +1,6 @@
 ---@type luvit.http
 local http = require "http"
+local fs = require "fs"
 
 ---@param req luvit.http.IncomingMessage
 function HTTPAuth(req)
@@ -116,12 +117,12 @@ local ps = cfg.ports.http
 
 if ps.plain then
 	require "net".createServer(onConn)
-		:listen(ps.plain, cfg.host)
+		:listen(ps.plain)
 	LogStarted("HTTP", "plain", ps.plain)
 end
 
 if ps.secure then
 	require "tls".createServer({key = Key, cert = Cert}, onConn)
-		:listen(ps.secure, cfg.host)
+		:listen(ps.secure)
 	LogStarted("HTTP", "secure", ps.secure)
 end

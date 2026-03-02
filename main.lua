@@ -4,7 +4,7 @@ _G.require = require
 require "string-extensions"
 require "util"
 
-_G.fs = require "fs"
+local fs = require "fs"
 
 ---@class config
 _G.cfg = require "default_cfg"

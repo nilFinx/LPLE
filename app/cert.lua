@@ -1,3 +1,4 @@
+local fs = require "fs"
 Key = fs.readFileSync("certs/"..cfg.key)
 Cert = fs.readFileSync("certs/"..cfg.cert)
 
