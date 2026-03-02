@@ -4,7 +4,7 @@ local tls = require "tls"
 -- Keeping for later
 --local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
 
-local minver, maxver = Ver2Num(cfg.secure.tls.min), Ver2Num((cfg.secure.tls.min))
+local minver, maxver = Ver2Num(Config.secure.tls.min), Ver2Num((Config.secure.tls.min))
 
 local errs = {
 	EAI_NONAME = {404, "Cannot resolve host"},
@@ -30,7 +30,7 @@ return function(req, res)
 	local cSocket = req.socket
 	local addr = cSocket:address()
 
-	if cfg.log_ip then
+	if Config.log_ip then
 		l:debug("CONNECT to %s:%s by %s (UA: %s)",
 			host, port,
 			addr and addr.ip or "none",
@@ -70,7 +70,7 @@ return function(req, res)
 			host = host,
 			servername = host,
 
-			requestCert = cfg.request_cert,
+			requestCert = Config.secure.request_cert,
 			ciphers = X_CIPHERS..""
 		}
 

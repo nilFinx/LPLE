@@ -20,7 +20,7 @@ if not index then
 	os.exit(1)
 end
 
-index = index:gsub("{CERT_PEM}", cfg.cert)
+index = index:gsub("{CERT_PEM}", Config.cert)
 
 local function serve(req, res)
 	req.url = req.url:gsub("http://.-/", "/"):gsub("%.%.", ""):gsub("//", "/")

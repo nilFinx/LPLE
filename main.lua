@@ -6,17 +6,18 @@ require "util"
 
 local fs = require "fs"
 
----@class config
-_G.cfg = require "default_cfg"
+---@type config
+_G.Config = require "default_cfg"
 if fs.existsSync "cfg.lua" then
     if not pcall(function() require "cfg" end) then
         print "cfg.lua failed to load"
         os.exit(1)
     end
-    cfg = table.patch(_G.cfg, require "cfg")
+    ---@type config
+    Config = table.patch(Config, require "cfg")
 end
 
-_G.l = require "logger" (cfg.log_level)
+_G.l = require "logger" (Config.log_level)
 
 local stack = {}
 _G.LogStarted = function(name, type, port)
@@ -26,7 +27,7 @@ end
 
 require "app.cert"
 
-if cfg.mod.http then
+if Config.mod.http then
     require "app.http"
 end
 

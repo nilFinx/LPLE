@@ -1,6 +1,6 @@
 local fs = require "fs"
-Key = fs.readFileSync("certs/"..cfg.key)
-Cert = fs.readFileSync("certs/"..cfg.cert)
+Key = fs.readFileSync("certs/"..Config.key)
+Cert = fs.readFileSync("certs/"..Config.cert)
 
 if not (Key and Cert) then l:error "Certificate or key file not found" os.exit(1) end
 
