@@ -1,0 +1,9 @@
+.link-content {
+	text-align: center;
+	line-height: 1.3;
+	padding: 8px 0;
+}
+
+fieldset a {
+	min-height: 36px;
+}

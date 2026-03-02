@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LiquidProxy</title>
+	<!-- CSS taken from https://cydia.saurik.com/cytyle/style-3163da6b7950852a03d31ea77735f4e1d2ba6699.css -->
+	<link rel="stylesheet" href="/cydia.css" />
+	<link rel="stylesheet" href="/style.css" />
+</head>
+<body class="pinstripe">
+	<panel>
+	<fieldset>
+		<div>
+			<div style="text-align: center;">
+				<strong>LiquidProxy</strong>
+			</div>
+		</div>
+	</fieldset>
+	<label>Home</label>
+	<fieldset>
+		<div>
+			<div style="text-align: center;">
+				iOS: bundle<br/>
+				Android: certificate (.cer) + client cert (.p12)<br/>
+				Others: Try it n see :p<br/>
+				If you don't care about clients certs (most of you shouldn't care), just use .cer or .pem cert.<br/>
+				<br/>
+				Note: On Windows server, you can only use .cer or .pem. No client certs here!
+			</div>
+		</div>
+	</fieldset>
+	<fieldset>
+		<a href="/client.mobileconfig">
+			<div>
+				<div class="link-content">
+					Get bundle (mobileconfig)
+				</div>
+			</div>
+		</a>
+		<a href="/{CERT_PEM}">
+			<div>
+				<div class="link-content">
+					Get certificate (.pem)
+				</div>
+			</div>
+		</a>
+		<a href="/cert.cer">
+			<div>
+				<div class="link-content">
+					Get certificate (.cer)
+				</div>
+			</div>
+		</a>
+		<a href="/client.p12">
+			<div>
+				<div class="link-content">
+					Get client cert (.p12)
+				</div>
+			</div>
+		</a>
+	</fieldset>
+	<label>Links</label>
+	<fieldset>
+		<a href="https://www.howsmyssl.com/">
+			<div>
+				<div class="link-content">
+					How's my SSL?
+				</div>
+			</div>
+		</a>
+		<a href="https://tlsroot.litten.ca/">
+			<div>
+				<div class="link-content">
+					Updated Root CA's by Hanabi
+				</div>
+			</div>
+		</a>
+		<a href="https://aroma.global.ssl.fastly.net/">
+			<div>
+				<div class="link-content">
+					Aroma (TCP proxy detection)
+				</div>
+			</div>
+		</a>
+	</fieldset>
+</panel>
+</body>
+</html>
