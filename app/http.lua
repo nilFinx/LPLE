@@ -3,7 +3,7 @@ local http = require "http"
 
 ---@param req luvit.http.IncomingMessage
 function HTTPAuth(req)
-	if cfg.http.auth then
+	if cfg.mod.http.auth and cfg.mod.http.auth.basic then
 		local a = req.headers["Proxy-Authentication"] or req.headers["Authentication"]
 		if a then
 			p(a)
@@ -22,8 +22,8 @@ function Ver2Num(ver)
 end
 
 local webui, wus
-if cfg.http.webui and cfg.http.webui.hosts then
-	local webui, wus = (table.unpack or unpack)(require "app.http.webui")
+if cfg.mod.http.webui and cfg.mod.http.webui.hosts then
+	webui, wus = (table.unpack or unpack)(require "app.http.webui")
 end
 local plainproxy = require "app.http.plain"
 local connectproxy = require "app.http.connect"
@@ -50,25 +50,51 @@ if fs.existsSync "scripts" then
 	end
 end
 
+local fb = cfg.mod.http.webui.forbidden_response
+
+local function no(res)
+	res.statusCode = 403
+	if fb then res:setHeader("Content-Length", fb:len()) end
+	res:finish(fb)
+end
+
+local function isLocal(url)
+	if cfg.mod.http.allow_local then
+		if url:sub(1, 7) == "http://" then
+			url = url:sub(8)
+		end
+		if url:match("^192%.168%.%d%.%d[:/]") or url:match("^127%.0*%.0*%.%d[:/]") then
+			return true
+		end
+	end
+end
+
 ---@param req luvit.http.IncomingMessage
 ---@param res luvit.http.ServerResponse
 local function onReq(req, res)
 	local suc, err = xpcall(function()
 		if req.method == "CONNECT" then
-			if wus and table.has(cfg.http.webui.hosts, req.url:match("(.-):443")) then
+			if wus and table.has(cfg.mod.http.webui.hosts, req.url:match("(.-):443")) then
 				wus(req, res) return
 			end
-			connectproxy(req, res)
+			if isLocal(req.url) then
+				no(res)
+			else
+				connectproxy(req, res)
+			end
 		else
 			if req.url:sub(1, 7) == "http://" then -- This can never be HTTPS
-				if webui and table.has(cfg.http.webui.hosts, req.url:sub(8):match("(.-)/")) then
+				if webui and table.has(cfg.mod.http.webui.hosts, req.url:sub(8):match("(.-)/")) then
 					webui(req, res) return
 				end
-				plainproxy(req, res)
+				if isLocal(req.url) then
+					no(res)
+				else
+					plainproxy(req, res)
+				end
 			else
-				if req.url:sub(1, 1) ~= "/" or not (webui and cfg.http.webui.proxyless) then
-					res.statusCode = 403
-					res:finish(cfg.http.webui.forbidden_response)
+				if not (webui and cfg.mod.http.webui.proxyless) or req.url:sub(1, 1) ~= "/" then 
+					no(res)
 				else
 					webui(req, res) return
 				end
