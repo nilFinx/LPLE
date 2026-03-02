@@ -1,6 +1,9 @@
 
 local tls = require "tls"
 
+-- Keeping for later
+--local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
+
 local minver, maxver = Ver2Num(cfg.secure.min), Ver2Num((cfg.secure.max))
 
 local errs = {
@@ -11,8 +14,15 @@ local errs = {
 ---@param req luvit.http.IncomingMessage
 ---@param res luvit.http.ServerResponse
 return function(req, res)
-	p(req.socket.ssl)
-	os.exit()
+	local authpass = false
+	if req.socket.ssl then
+		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
+			authpass = true
+		end
+	end
+	if not authpass then
+		authpass = HTTPAuth(req)
+	end
 	local host, port = req.url:match("([^:]+):?(%d*)")
 	port = tonumber(port) or 443
 
@@ -51,32 +61,37 @@ return function(req, res)
 		local c, k = GenCert(host)
 
 		local opt = {
-			key = k,
 			ca = Cert,
-			cert = c,
 			server = true,
-			requestCert = cfg.request_cert,
+			cert = c,
+			key = k,
+
 			hostname = host,
 			host = host,
 			servername = host,
-			ciphers = X_CIPHERS..":ALL"
 
-			--secureContext = tls.createCredentials({--	ciphers = "ALL"})
+			requestCert = cfg.request_cert,
+			ciphers = X_CIPHERS..""
 		}
 
 		local tSocket tSocket = tls.TLSSocket:new(cSocket, opt)
 		---@diagnostic disable-next-line: param-type-mismatch
 		tSocket:on('secureConnection', function()
-			local v = Ver2Num(tSocket.ssl:get("version"))
-			p(v)
-			if v < minver then -- How did we even get here?
-				tSocket:destroy()
-				sSocket:destroy()
-			end
-			if v > maxver then
-				if not HTTPAuth(req) then
+			if not authpass then
+				local v = Ver2Num(tSocket.ssl:get("version"))
+				if v < minver then -- How did we even get here?
+					l:debug "Cutting connection, got lower version than allowed"
 					tSocket:destroy()
 					sSocket:destroy()
+					return
+				end
+				if v > maxver then
+					if not HTTPAuth(req) then
+						l:debug "Cutting connection, failed post-serverconn auth"
+						tSocket:destroy()
+						sSocket:destroy()
+						return
+					end
 				end
 			end
 			tSocket:pipe(sSocket) sSocket:pipe(tSocket)
