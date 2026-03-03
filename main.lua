@@ -26,6 +26,7 @@ _G.LogStarted = function(name, type, port)
 end
 
 require "app.cert"
+require "app.fail2ban"
 
 if Config.mod.http then
     require "app.http"
