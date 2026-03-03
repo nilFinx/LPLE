@@ -6,7 +6,7 @@ local c = {
 	-- Also logs UA for HTTP, format is like DATE | [DEBUG]  | CONNECT to HOST:IP by ClientIP (UA: User-Agent-Here)
 	-- Fallback text is always `none`
 	-- Note: around [DEBUG] has control characters, match by `CONNECT to` if you use reges
-	log_ip = true,
+	log_ip = true, -- TODO for standard HTTP and also possibly others
 
 	-- Everything sits in certs dir
 	key = "key.pem",
@@ -19,15 +19,15 @@ local c = {
 			plain = 51531,
 			secure = 51532
 		},
-		imap = {
+		imap = { -- TODO
 			starttls = 51533,
 			secure = 51534
 		},
-		smtp = {
+		smtp = { -- TODO
 			starttls = 51535,
 			secure = 51536,
 		},
-		xmpp = {
+		xmpp = { -- TODO
 			starttls = 51537,
 			secure = 51538
 		}
@@ -42,6 +42,7 @@ local c = {
 
 	-- TLS/SSL version limits. min is immediately applied, while max is always latest. When handshake ends and the client supports something above max, the pipe will be killed.
 	secure = {
+		fail2ban_max_tries = 10,
 		tls = {
 			---@type ver
 			-- min always cuts conection
@@ -54,6 +55,7 @@ local c = {
 			pass_auth = true,
 
 			-- Request a client certificate to be used
+			-- TODO
 			request_cert = false,
 		},
 		mod = {
@@ -61,22 +63,30 @@ local c = {
 				username = "lp",
 				password = nil,
 				-- Verify username if given, don't otherwise
-				require_username = false
+				require_username = false,
+				-- Ask for authentication on web UI or not
+				webui_authenticate = true,
 			}
 		},
 
 		---@type table<string>
 		-- all usernames below will be allowed to connect, if the list isn't empty. ALL OTHER ACCOUNTS ARE BLOCKED.
-		-- Format is username@server. 
+		-- Format is ["username@server"] = true.
+		-- {["username@server"]=true}, etc. Add a `,` in end of each one before the next, like:
+		-- {
+		-- 	["u@s"] = true,
+		-- 	["au@s"] = true
+		-- }
 		-- For XMPP, it is always username@example.com, but for mail, it could be username@example.com or username (not mail.example.com).
-		username_whitelist = {}
+		username_whitelist = {
+			--["johndoe@example.com"] = true,
+			--["zechfelms-whatsapp-user-somehow-fuck-them"] = true,
+			--["matrixsux"] = true
+		}
 	},
 
 	mod = {
 		http = {
-			-- "Temporary failure" and stuff on error
-			expose_error = true,
-
 			-- Set http.webui or http.webui.hosts to nil to disable
 			webui = {
 				-- Body of when your request gets denied (either proxyless or fail2ban)
@@ -88,6 +98,9 @@ local c = {
 					"lp.real.com",
 					"liquidproxy.r.e.a.l"
 				},
+
+				-- Allow www.<any of the hosts> because fuck world wide web
+				www_host = true,
 
 				-- Allow connection by hitting ip:port, not a specified webUI host through proxy
 				proxyless = false
