@@ -62,7 +62,7 @@ function Ver2Num(ver)
 		return tonumber("0."..ver:sub(5))
 	end
 end
-local maxver = Ver2Num((Config.secure.tls.min))
+local maxver = Ver2Num((Config.secure.tls.max))
 
 ---@param req luvit.http.IncomingMessage
 -- false means they haven't tried to authenticate at all, so you shouldn't fail2ban on it
