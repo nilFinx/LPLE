@@ -9,6 +9,7 @@ function AddIP(ip)
 	leaderboard[ip] = lip and lip + 1 or 1
 	if (lip or 1) >= max_allowed - 1 then
 		BannedIPs[ip] = true
+		l:info("Banned %s for failing fail2ban", ip)
 	end
 end
 
