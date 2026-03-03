@@ -68,7 +68,6 @@ local maxver = Ver2Num((Config.secure.tls.min))
 -- false means they haven't tried to authenticate at all, so you shouldn't fail2ban on it
 function HTTPAuth(req)
 	local ip = req.socket:address().ip
-	if not Config.secure.mod.http.password then return true end
 	if req.socket.ssl then
 		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
 			RemoveIP(ip) return true
