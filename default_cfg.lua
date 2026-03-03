@@ -99,6 +99,8 @@ local c = {
 					"liquidproxy.r.e.a.l"
 				},
 
+				realm = "admin",
+
 				-- Allow www.<any of the hosts> because fuck world wide web
 				www_host = true,
 
