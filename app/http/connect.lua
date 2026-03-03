@@ -40,7 +40,7 @@ return function(req, res)
 	end
 
 	local c, k = GenCert(host)
-	p(c. k)
+
 	if not (c and k) then
 		l:error("Could not generate key for "..(host or "EMPTY HOST? WTF??"))
 		res.statusCode = 500
@@ -77,7 +77,7 @@ return function(req, res)
 		cSocket:destroy()
 	end)
 	cSocket:on("error", function(err)
-		l:error("Client error: "..(err or "No error...")) p(err)
+		l:error("Client error: "..(err or "No error..."))
 		print(debug.traceback())
 		sSocket:destroy()
 	end)
