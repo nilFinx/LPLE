@@ -51,6 +51,8 @@ local c = {
 			---@type ver
 			max = "TLSv1.2",
 
+			key_length = 4096,
+
 			-- Instead of being a limit, use it to immediately pass auth
 			pass_auth = true,
 

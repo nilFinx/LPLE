@@ -20,7 +20,7 @@ function GenCert(names)
 	if type(names) == "string" then names = {names} end
 
 	local now = UnixEpoch()-One.hour
-	local ckey = assert(openssl.pkey.new("rsa", 2048))
+	local ckey = assert(openssl.pkey.new("rsa", Config.secure.tls.key_length))
 
 	local name = openssl.x509.name.new {{CN=names[1]}}
 
