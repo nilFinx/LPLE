@@ -64,13 +64,10 @@ function Ver2Num(ver)
 end
 local maxver = Ver2Num((Config.secure.tls.max))
 
----@param req luvit.http.IncomingMessage
--- false means they haven't tried to authenticate at all, so you shouldn't fail2ban on it
-function HTTPAuth(req)
-	local ip = req.socket:address().ip
+local function haw(req, ip)
 	if req.socket.ssl then
 		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
-			RemoveIP(ip) return true
+			return true
 		end
 	end
 	if mod_secure.password then
@@ -80,23 +77,33 @@ function HTTPAuth(req)
 				local u, p = btoa(a:sub(7)):match("^([^:]*):?(.+)$")
 				if u == "" then
 					if mod_secure.require_username then
-						AddIP(ip) return false
+						return false
 					end
 				elseif u ~= mod_secure.username then
 					if Config.secure.username_whitelist[u] then
-						RemoveIP(ip) return true
+						return true
 					else
-						AddIP(ip) return false
+						return false
 					end
 				end
 				if p == mod_secure.password then
-					RemoveIP(ip) return true
+					return true
 				end
 			end
 		end
 	end
 
-	AddIP(ip) return false
+	return false
+end
+
+---@param req luvit.http.IncomingMessage
+function HTTPAuth(req)
+	local ip = req.socket:address().ip
+	if haw(req, ip) then
+		RemoveIP(ip) return true
+	else
+		AddIP(ip) return false
+	end
 end
 
 local plainproxy = require "app.http.plain"
