@@ -77,23 +77,27 @@ local function haw(req, ip)
 				local u, p = btoa(a:sub(7)):match("^([^:]*):?(.+)$")
 				if u == "" then
 					if mod_secure.require_username then
-						return false
+						l:debug "Auth fail: No username but server requires it" return false
 					end
 				elseif u ~= mod_secure.username then
 					if Config.secure.username_whitelist[u] then
 						return true
 					else
-						return false
+						l:debug "Auth fail: Wrong and not whitelisted username" return false
 					end
 				end
 				if p == mod_secure.password then
 					return true
+				else
+					l:debug "Auth fail: Wrong password" return false
 				end
 			end
+		else
+			l:debug "Auth fail: No authorization header" return
 		end
 	end
 
-	return false
+	l:debug "Auth fail: Unspecified" return false
 end
 
 ---@param req luvit.http.IncomingMessage
@@ -102,7 +106,7 @@ function HTTPAuth(req)
 	if haw(req, ip) then
 		RemoveIP(ip) return true
 	else
-		AddIP(ip) return false
+		AddIP(ip, req) return false
 	end
 end
 
