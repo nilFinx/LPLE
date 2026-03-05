@@ -14,21 +14,31 @@ local mime = {
 local nft = "Not found"
 local nfl = nft:len()
 
-local index = fs.readFileSync("static/index.html")
-if not index then
-	l:error "static/index.html not found or could not be read"
-	os.exit(1)
+local cache = {}
+local function preload(filename)
+	fs.readFile("static/"..filename, function(err, data)
+		if err then
+			print("Error loading "..filename)
+			print(err)
+			os.exit(1)
+		end
+		cache[filename] = data
+	end)
 end
 
-index = index:gsub("{CERT_PEM}", Config.cert)
+local topreload = {
+	"index.html", "cydia.css", "style.css"
+}
+for _, v in pairs(topreload) do preload(v) end
 
 local function serve(req, res)
 	req.url = req.url:gsub("http://.-/", "/"):gsub("%.%.", ""):gsub("//", "/")
-	local f
 	if req.url == "/" then
-		f = index
+		req.url = "/index.html"
 	end
+	local f = cache[req.url:sub(2)]
 	if not f then
+		l:debug(req.url.." cache miss")
 		f = fs.readFileSync("static"..req.url)
 		if not f then
 			f = fs.readFileSync("certs"..req.url)
