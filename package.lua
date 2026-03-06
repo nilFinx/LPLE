@@ -4,6 +4,8 @@ return {
 	private = true,
 	dependencies = {
 		"luvit/base64",
+		"luvit/coro-channel",
+		"luvit/coro-net",
 		"luvit/coro-http",
 		"luvit/dns",
 		"luvit/secure-socket",
