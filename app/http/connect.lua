@@ -1,11 +1,17 @@
 -- TODO: Make TLS better again by reading the client hello, and make it optional
+
+local cn = require "coro-net"
 local tls = require "tls"
 local wrap = require "app.wrap"
+local tlspeek = require "app.tlspeek"
+local ss = require "secure-socket"
+
+local gc = collectgarbage
+local request_cert = Config.secure.request_cer
+local maxver = Ver2Num((Config.secure.tls.min))
 
 -- Keeping for later
 --local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
-
-local maxver = Ver2Num((Config.secure.tls.min))
 
 local errs = {
 	EAI_NONAME = {404, "Cannot resolve host"},
@@ -13,72 +19,107 @@ local errs = {
 	ETIMEDOUT = {504, "Timed out"}
 }
 
----@param req luvit.http.IncomingMessage
----@param res luvit.http.ServerResponse
-return function(req, res)
+errs.EAI_NODATA = errs.EAI_NONAME
+
+for _, t in pairs(errs) do
+	t[3] = tostring(t[2]:len())
+end
+
+local issb = "Internal Server Error\r\n"
+local issh = {
+	code = 500,
+	{"Content-Length", issb:len()}
+}
+
+---@param cSocket uv_tcp_t
+return function(req, cSocket, cread, cwrite)
 	local authpass = false
-	if req.socket.ssl then
-		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
+	--[[if cSocket.ssl then
+		if Ver2Num(cSocket.ssl:get("version")) <= maxver then
 			authpass = true
 		end
-	end
+	end]]
 	if not authpass then
-		authpass = HTTPAuth(req)
+		authpass = HTTPAuth(req, cSocket)
 	end
-	local host, port = req.url:match("([^:]+):?(%d*)")
+	local host, port = req.path:match("([^:]+):?(%d*)")
 	port = tonumber(port) or 443
 
-	---@type luvit.net.Socket
-	local cSocket = req.socket
-	local addr = cSocket:address()
-
 	if Config.log_ip then
-		l:debug("CONNECT to %s:%s by %s (UA: %s)",
+		l:info("CONNECT to %s:%s by %s (UA: %s)",
 			host, port,
-			addr and addr.ip or "none",
-			req.headers["User-Agent"] or "none")
+			(socket.socket or socket):getpeername().ip,
+			req["User-Agent"] or "none")
 	end
 
 	local c, k = GenCert(host)
-
 	if not (c and k) then
-		l:error("Could not generate key for "..(host or "EMPTY HOST? WTF??"))
-		res.statusCode = 500
-		res:finish() return
+		return issh, issb
 	end
 
-	cSocket:removeAllListeners()
-
-	local sSocket sSocket = tls.connect({
+	local read, write, sSocket = cn.connect({
 		port = port,
 		host = host,
-		hostname = host
-	}, function()
-		cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
+		hostname = host,
+		tls = true
+	})
+	if not (read and write and sSocket) then
+		local e = errs[write]
+		l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
+		if e then
+			return {
+				code = e[1],
+				reason = e[2],
+				{"Content-Length", errs[3]}
+			}, e[2]
+		end
+		return issh, issb
+	end
+	cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
 
-		wrap(host, sSocket, cSocket, authpass, HTTPAuth, req)
-	end)
+	--local buf = tlspeek(cSocket)
 
-	sSocket:on('end', function()
-		cSocket:shutdown()
-	end)
-	cSocket:on('end', function()
-		sSocket:shutdown()
-	end)
+	---@type uv_tcp_t
+	local tSocket = ss(cSocket, {
+		ca = Cert,
+		cert = c:export(), -- I have zero clue on why this is needed
+		key = k:export(), -- But I do it because I apparently have to
+		server = true,
 
-	sSocket:on("error", function(err)
-		l:error("Upstream error: "..(err or "No error..."))
-		local e = errs[err]
-		res.statusCode = e and e[1] or 404
-		-- Something custom. Maybe pushed by the time you see this.
-		---@diagnostic disable-next-line: inject-field
-		res.statusMessage = e and e[2] or nil
-		res:finish()
-		cSocket:destroy()
+		buffer = buf,
+
+		hostname = host,
+		host = host,
+		servername = host,
+
+		requestCert = request_cert,
+	})
+
+	if not tSocket then
+		l:error("Error when upgrading (usually client issue)")
+		print("OpenSSL error: ", require "openssl".error())
+		return
+	end
+	l:debug "successful TLS handshake"
+
+	sSocket:read_start(function(err, chunk)
+		if err then
+			l:error("Upstream error: "..err)
+			tSocket:close_reset()
+		elseif not chunk then
+			tSocket:close()
+		else
+			tSocket:write(chunk)
+		end
 	end)
-	cSocket:on("error", function(err)
-		l:error("Client error: "..(err or "No error..."))
-		print(debug.traceback())
-		sSocket:destroy()
+	tSocket:read_start(function(err, chunk)
+		if err then
+			l:error("Client error: "..err)
+			sSocket:close_reset()
+		elseif not chunk then
+			sSocket:close()
+		else
+			sSocket:write(chunk)
+		end
 	end)
 end

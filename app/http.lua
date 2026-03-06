@@ -1,5 +1,4 @@
----@type luvit.http
-local http = require "http"
+local ch = require "coro-http"
 local fs = require "fs"
 ---@diagnostic disable-next-line: undefined-field
 local btoa = require "base64".decode
@@ -8,18 +7,11 @@ local ports = Config.ports.http
 local mod_secure = Config.secure.mod.http
 local mod = Config.mod.http
 
-local webui, wus, whtest, plsauth
+local webui, wus, whtest
 local authpls = "Please authenticate :)"
 local authplsl = tostring(authpls:len())
 if mod.webui then
 	webui, wus = (table.unpack or unpack)(require "app.http.webui")
-	function plsauth(res)
-		res.statusCode = 407
-		res:setHeader("Proxy-Authenticate", "Basic")
-		res:setHeader("Content-Length", authplsl)
-		res:setHeader("Proxy-Connection", "Keep-Alive")
-		res:finish(authpls)
-	end
 
 	local wuih = mod.webui.hosts
 	function whtest(url)
@@ -64,14 +56,14 @@ function Ver2Num(ver)
 end
 local maxver = Ver2Num((Config.secure.tls.max))
 
-local function haw(req, ip)
-	if req.socket.ssl then
+local function haw(req, socket)
+	if socket.ssl then
 		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
 			return true
 		end
 	end
 	if mod_secure.password then
-		local a = req.headers["Proxy-Authorization"] or req.headers["Authorization"]
+		local a = req["Proxy-Authorization"] or req["Authorization"]
 		if a then
 			if a:sub(1, 6) == "Basic " then
 				local u, p = btoa(a:sub(7)):match("^([^:]*):?(.+)$")
@@ -99,105 +91,125 @@ local function haw(req, ip)
 
 	l:debug "Auth fail: Unspecified" return false
 end
-
----@param req luvit.http.IncomingMessage
-function HTTPAuth(req)
-	local ip = req.socket:address().ip
-	if haw(req, ip) then
+function HTTPAuth(req, socket)
+	local ip = (socket.socket or socket):getpeername().ip
+	if haw(req, socket) then
 		RemoveIP(ip) return true
 	else
-		AddIP(ip, req) return false
+		AddIP(ip) return false
 	end
 end
 
 local plainproxy = require "app.http.plain"
 local connectproxy = require "app.http.connect"
 
+local authb = "Please authenticate :)\r\n"
+local auth_webui = {
+	code = 401,
+	{"WWW-Authenticate", mod.webui.realm and "Basic realm=\""..mod.webui.realm.."\"" or "Basic"},
+	{"Content-Length", authb:len()}
+}
+local auth_proxy = {
+	code = 407,
+	{"Proxy-Authenticate", "Basic"},
+	{"Content-Lenghth", authb:len()}
+}
 
-local fb = Config.mod.http.forbidden_response
-local fbl = tostring(fb and fb:len() or nil)
-
-local function no(res)
-	res.statusCode = 403
-	if fb then res:setHeader("Content-Length", fbl) end
-	res:finish(fb)
+local nob = Config.mod.http.forbidden_response
+local noh = {code = 200}
+if nob then
+	nob = nob.."r\n"
+	noh = {
+		code = 200,
+		{"Content-Type", "text/plain"},
+		{"Content-Length", nob:len()}
+	}
 end
 
-local function plsauthnorm(res)
-	res.statusCode = 401
-	res:setHeader("WWW-Authenticate", "Basic realm=\""..mod.webui.realm.."\"")
-	res:setHeader("Content-Length", authplsl)
-	res:setHeader("Connection", "Keep-Alive")
-	res:finish(authpls)
-end
+local issb = "Internal Server Error\r\n"
+local issh = {
+	code = 500,
+	{"Content-Length", issb:len()}
+}
 
----@param req luvit.http.IncomingMessage
----@param res luvit.http.ServerResponse
-local function onReq(req, res)
-	local ip = req.socket:address().ip
-	if BannedIPs[ip] then
-		no(res) return
+local head_metatable = {
+	__index = function(t, k)
+		local ct = rawget(t, "_cache")
+		if not ct then
+			ct = {}
+			rawset(t, "_cache", ct)
+		end
+		local c = ct[k]
+		if c then return c end
+		for _, t in pairs(t) do
+			if type(t) == "table" and t[1] == k then
+				return t[2]
+			end
+		end
 	end
-	local suc, err = xpcall(function()
+}
+
+---@return table headers
+---@return string? body
+local function onReq(req, body, socket)
+	setmetatable(req, head_metatable)
+	local ip = (socket.socket or socket):getpeername().ip
+	if BannedIPs[ip] then
+		return noh, nob
+	end
+	local suc, a, b = xpcall(function()
 		if req.method == "CONNECT" then
-			if not HTTPAuth(req) then
-				plsauth(res) return
+			if not HTTPAuth(req, socket) then
+				return auth_proxy, authb
 			end
-			if wus and whtest(req.url:match("^([^:]+)")) then
-				wus(req, res) return
+			if wus and whtest(req.path:match("^([^:]+)")) then
+				return wus(req)
 			end
-			connectproxy(req, res)
+			return connectproxy(req, socket)
 		else
-			if req.url:sub(1, 7) == "http://" then -- This can never be HTTPS
-				if not HTTPAuth(req) then
-					plsauth(res) return
+			if req.path:sub(1, 7) == "http://" then -- This can never be HTTPS
+				if not HTTPAuth(req, socket) then
+					return auth_proxy, authb
 				end
-				if webui and whtest(req.url:sub(8):match("^(.-)/")) then
+				if webui and whtest(req.path:sub(8):match("^(.-)/")) then
 					if mod_secure.webui_authenticate then
-						if not HTTPAuth(req) then
-							plsauthnorm(res) return
+						if not HTTPAuth(req, socket) then
+							return auth_webui, authb
 						end
 					end
-					webui(req, res) return
+					return webui(req)
 				end
-				plainproxy(req, res)
+				return plainproxy(req, body)
 			else
-				if req.url:sub(1, 1) ~= "/" or not (webui and mod.webui.proxyless) then
-					no(res)
+				if req.path:sub(1, 1) ~= "/" or not (webui and mod.webui.proxyless) then
+					return noh, nob
 				else
 					if mod_secure.webui_authenticate then
-						if not HTTPAuth(req) then
-							plsauthnorm(res) return
+						if not HTTPAuth(req, socket) then
+							return auth_webui, authb
 						end
 					end
-					webui(req, res) return
+					return webui(req)
 				end
 			end
 		end
 	end, function(err)
-		res.statusCode = 500
-		local ISS = "Internal server error"
-		res:setHeader("Content-Length", tostring(ISS:len()))
-		res:finish(ISS)
         return debug.traceback(err, 1)
 	end)
 	if not suc then
-		l:error(err)
+		l:error(a)
+		return issh, issb
 	end
-end
-
-local function onConn(socket)
-	return http.handleConnection(socket, onReq)
+	---@diagnostic disable-next-line: return-type-mismatch
+	return a, b
 end
 
 if ports.plain then
-	require "net".createServer(onConn)
-		:listen(ports.plain)
+	ch.createServer("0.0.0.0", ports.plain, onReq)
 	LogStarted("HTTP", "plain", ports.plain)
 end
 
 if ports.secure then
-	require "tls".createServer({key = Key, cert = Cert}, onConn)
-		:listen(ports.secure)
+ch.createServer("0.0.0.0", ports.secure, onReq, {key = Key, cert = Cert, server = true})
 	LogStarted("HTTP", "secure", ports.secure)
 end
