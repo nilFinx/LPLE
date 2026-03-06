@@ -10,7 +10,6 @@ local x509 = openssl.x509
 local ca = assert(x509.read(Cert))
 local cakey = assert(openssl.pkey.read(Key, true))
 
--- TODO: Implement caches
 local ccache = {}
 
 -- Inspired from https://github.com/zhaozg/lua-openssl/issues/208. Thanks xdays!
@@ -18,8 +17,10 @@ local ccache = {}
 -- TODO: A mess. Try to reduce the mess. Please.
 function GenCert(names)
 	if type(names) == "string" then names = {names} end
+	local c = ccache[names[1]]
+	if c and c[1]:validat() then return unpack(c) end
 
-	local now = UnixEpoch()-One.hour
+	local now = os.time()
 	local ckey = assert(openssl.pkey.new("rsa", Config.secure.tls.key_length))
 
 	local name = openssl.x509.name.new {{CN=names[1]}}
@@ -50,12 +51,15 @@ function GenCert(names)
 
 	req:sign(ckey, "sha256")
 
-	local c = req:to_x509(ckey, 1)
+	c = req:to_x509(ckey, 1)
+	c:serial(openssl.bn.random(128))
 	c:subject(name)
-	c:validat(now, now + 24 * One.hour)
+	c:validat(now - One.hour, now + One.hour * 24)
 	c:extensions({x509.extension.new_extension(san)})
 
 	c:sign(cakey, ca, "sha256")
 
-	return c:export(), ckey
+	ccache[names[1]] = {c, ckey}
+
+	return c, ckey
 end
