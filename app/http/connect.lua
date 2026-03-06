@@ -1,14 +1,19 @@
--- TODO: Make TLS better again by reading the client hello, and make it optional
-
 local cn = require "coro-net"
-local tls = require "tls"
-local wrap = require "app.wrap"
-local tlspeek = require "app.tlspeek"
 local ss = require "secure-socket"
+local tp = require "app.tlspeek"
+local uprox = require "app.uvproxy"
 
+local tlspeek = tp.peek
+local tpconst = tp.const
 local gc = collectgarbage
 local request_cert = Config.secure.request_cer
-local maxver = Ver2Num((Config.secure.tls.min))
+local maxver = Ver2Num((Config.secure.tls.max))
+local tp_max
+if maxver == 0.3 then
+	tp_max = tpconst.tlsVersion10 - 1 -- NOT RECOMMENDED
+else
+	tp_max = tpconst["tlsVersion"..tostring(maxver):gsub("%.", "")]
+end
 
 -- Keeping for later
 --local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
@@ -33,15 +38,7 @@ local issh = {
 
 ---@param cSocket uv_tcp_t
 return function(req, cSocket, cread, cwrite)
-	local authpass = false
-	--[[if cSocket.ssl then
-		if Ver2Num(cSocket.ssl:get("version")) <= maxver then
-			authpass = true
-		end
-	end]]
-	if not authpass then
-		authpass = HTTPAuth(req, cSocket)
-	end
+	local authpass = HTTPAuth(req, cSocket)
 	local host, port = req.path:match("([^:]+):?(%d*)")
 	port = tonumber(port) or 443
 
@@ -49,7 +46,7 @@ return function(req, cSocket, cread, cwrite)
 		l:info("CONNECT to %s:%s by %s (UA: %s)",
 			host, port,
 			---@diagnostic disable-next-line: undefined-field
-			(cSocket.socket or cSocket):getpeername().ip,
+			cSocket:getpeername().ip,
 			req["User-Agent"] or "none")
 	end
 
@@ -78,7 +75,26 @@ return function(req, cSocket, cread, cwrite)
 	end
 	cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
 
-	local buf = tlspeek(cSocket)
+	local buf, info, err = tlspeek(cSocket)
+
+	if err then
+		l:warning("Failed to read handshake ("..err..")")
+	end
+	if not authpass then
+		if info then
+			if not info.supportsHTTP2 then
+				authpass = true
+			elseif not (info.tlsVersion == tp_max or info.tlsVersions[tp_max]) then
+				authpass = true
+			end
+		end
+	end
+	if not authpass then
+		---@diagnostic disable-next-line: undefined-field
+		l:info("Post-connect auth failed ("..cSocket:getpeername().ip..")")
+		cSocket:close_reset()
+		sSocket:close_reset()
+	end
 
 	l:debug "client handshake start"
 	---@type uv_tcp_t
@@ -104,24 +120,6 @@ return function(req, cSocket, cread, cwrite)
 	end
 	l:debug "successful TLS handshake"
 
-	sSocket:read_start(function(err, chunk)
-		if err then
-			l:error("Upstream error: "..err)
-			tSocket:close_reset()
-		elseif not chunk then
-			tSocket:close()
-		else
-			tSocket:write(chunk)
-		end
-	end)
-	tSocket:read_start(function(err, chunk)
-		if err then
-			l:error("Client error: "..err)
-			sSocket:close_reset()
-		elseif not chunk then
-			sSocket:close()
-		else
-			sSocket:write(chunk)
-		end
-	end)
+	uprox(tSocket, sSocket)
+	gc()
 end
