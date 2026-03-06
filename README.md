@@ -53,3 +53,5 @@ This project uses LGPLv3.
 cydia.css uses CSS from [cydia.saurik.com](https://cydia.saurik.com/), and few parts of index.html is taken from Victor Lobe's personal website ([gh:victorlobe/victorlobe.me](https://github.com/victorlobe/victorlobe.me)), as a reference on how to use cydia.css. Nothing too big, I think.
 
 /ext includes lua-url and ext from [gh:thenumbernine](https://github.com/thenumbernine). MIT licensed. The license file is available under [ext/LICENSE](./ext/LICENSE).
+
+Many parts of the code is taken from [gh:Wowfunhappy/AquaProxy](https://github.com/Wowfunhappy/AquaProxy). The license is available under [app/tlspeek.lua](./app/tlspeek.lua).
