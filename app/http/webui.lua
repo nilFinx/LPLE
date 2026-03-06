@@ -32,28 +32,27 @@ local topreload = {
 for _, v in pairs(topreload) do preload(v) end
 
 local function serve(req, res)
-	req.url = req.url:gsub("http://.-/", "/"):gsub("%.%.", ""):gsub("//", "/")
-	if req.url == "/" then
-		req.url = "/index.html"
+	req.path = req.path:gsub("http://.-/", "/"):gsub("%.%.", ""):gsub("//", "/")
+	if req.path == "/" then
+		req.path = "/index.html"
 	end
-	local f = cache[req.url:sub(2)]
+	local f = cache[req.path:sub(2)]
 	if not f then
-		l:debug(req.url.." cache miss")
-		f = fs.readFileSync("static"..req.url)
+		l:debug(req.path.." cache miss")
+		f = fs.readFileSync("static"..req.path)
 		if not f then
-			f = fs.readFileSync("certs"..req.url)
+			f = fs.readFileSync("certs"..req.path)
 			if not f then
-				res.statusCode = 404
-				res:setHeader("Content-Length", nfl)
-				res:finish(nft)
-				return
+				return {code = 404, {"Content-Length", nfl}}, nft
 			end
 		end
 	end
 
-	res.statusCode = 200
-	res:setHeader("Content-Type", mime[req.url:match("%.(.-)$") or "application/octet-stream"])
-	res:finish(f)
+	return {
+		code = 200,
+		{"Content-Type",  mime[req.path:match("%.(.-)$")] or "application/octet-stream"},
+		{"Content-Length", tostring(f:len())}
+	}, f
 end
 
 return {serve, function(req, res)
