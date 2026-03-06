@@ -68,6 +68,8 @@ local c = {
 				require_username = false,
 				-- Ask for authentication on web UI or not
 				webui_authenticate = true,
+				-- HTTP1.1 or older = auth immediately
+				httpver_auth = true
 			}
 		},
 
