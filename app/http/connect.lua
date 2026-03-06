@@ -82,9 +82,9 @@ return function(req, cSocket, cread, cwrite)
 	end
 	if not authpass then
 		if info then
-			if not info.supportsHTTP2 then
+			if Config.secure.mod.http.httpver_auth and not info.supportsHTTP2 then
 				authpass = true
-			elseif not (info.tlsVersion == tp_max or info.tlsVersions[tp_max]) then
+			elseif Config.secure.tls.pass_auth and not (info.tlsVersion == tp_max or info.tlsVersions[tp_max]) then
 				authpass = true
 			end
 		end
