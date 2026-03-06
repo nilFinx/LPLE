@@ -93,6 +93,7 @@ local function haw(req, socket)
 end
 function HTTPAuth(req, socket)
 	local ip = (socket.socket or socket):getpeername().ip
+	if AllowedIPs[ip] then return true end
 	if haw(req, socket) then
 		RemoveIP(ip) return true
 	else
@@ -210,6 +211,6 @@ if ports.plain then
 end
 
 if ports.secure then
-ch.createServer("0.0.0.0", ports.secure, onReq, {key = Key, cert = Cert, server = true})
+	ch.createServer("0.0.0.0", ports.secure, onReq, {key = Key, cert = Cert, server = true})
 	LogStarted("HTTP", "secure", ports.secure)
 end

@@ -1,5 +1,7 @@
 local leaderboard = {}
 ---@type table<string,boolean>
+AllowedIPs = {}
+---@type table<string,boolean>
 BannedIPs = {}
 
 local max_allowed = Config.secure.fail2ban_max_tries
@@ -17,4 +19,5 @@ end
 -- auth pass
 function RemoveIP(ip)
 	leaderboard[ip] = nil
+	AllowedIPs[ip] = true
 end
