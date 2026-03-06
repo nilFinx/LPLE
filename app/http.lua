@@ -47,6 +47,7 @@ if fs.existsSync "scripts" then
 	end
 end
 
+-- 0.3, 1.0, 1.1, 1.2, 1.3
 function Ver2Num(ver)
 	if ver:sub(1,4) == "TLSv" then
 		return tonumber(ver:sub(5))
@@ -92,7 +93,7 @@ local function haw(req, socket)
 	l:debug "Auth fail: Unspecified" return false
 end
 function HTTPAuth(req, socket)
-	local ip = (socket.socket or socket):getpeername().ip
+	local ip = socket:getpeername().ip
 	if AllowedIPs[ip] then return true end
 	if haw(req, socket) then
 		RemoveIP(ip) return true
@@ -154,7 +155,7 @@ local head_metatable = {
 ---@return string? body
 local function onReq(req, body, socket)
 	setmetatable(req, head_metatable)
-	local ip = (socket.socket or socket):getpeername().ip
+	local ip = socket:getpeername().ip
 	if BannedIPs[ip] then
 		return noh, nob
 	end
@@ -211,6 +212,8 @@ if ports.plain then
 end
 
 if ports.secure then
+	--TODO: remove diag
+---@diagnostic disable-next-line: redundant-parameter
 	ch.createServer("0.0.0.0", ports.secure, onReq, {key = Key, cert = Cert, server = true})
 	LogStarted("HTTP", "secure", ports.secure)
 end
