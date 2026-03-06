@@ -4,7 +4,7 @@ return function(cSocket, sSocket)
 			l:error("Upstream error: "..err)
 			cSocket:close_reset()
 		elseif not chunk then
-			cSocket:close()
+			cSocket:shutdown()
 		else
 			cSocket:write(chunk)
 		end
@@ -14,7 +14,7 @@ return function(cSocket, sSocket)
 			l:error("Client error: "..err)
 			sSocket:close_reset()
 		elseif not chunk then
-			sSocket:close()
+			sSocket:shutdown()
 		else
 			sSocket:write(chunk)
 		end
