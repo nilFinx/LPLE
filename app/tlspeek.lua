@@ -98,7 +98,7 @@ local function parseSupportedVersions(buf, info)
 			info.supportsTLS13 = true
 		end
 		if not info.tlsVersions then info.tlsVersions = {} end
-		table.insert(info.tlsVersions, version)
+		info.tlsVersions[version] = true
 		pos = pos + 2
 		i = i + 1
 	end
@@ -141,7 +141,9 @@ local function tlspeek(socket)
 	---@class info
 	local info = {
 		supportsTLS13 = false,
-		supportsHTTP2 = false
+		supportsHTTP2 = false,
+		---@type table<integer, boolean>
+		tlsVersions = {}
 	}
 	socket:read_stop()
 	local buf = wr(socket)()
@@ -228,4 +230,7 @@ local function tlspeek(socket)
 	return buf, info
 end
 
-return tlspeek, const
+return {
+	peek = tlspeek,
+	const = const
+}
