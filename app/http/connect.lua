@@ -48,7 +48,8 @@ return function(req, cSocket, cread, cwrite)
 	if Config.log_ip then
 		l:info("CONNECT to %s:%s by %s (UA: %s)",
 			host, port,
-			(socket.socket or socket):getpeername().ip,
+			---@diagnostic disable-next-line: undefined-field
+			(cSocket.socket or cSocket):getpeername().ip,
 			req["User-Agent"] or "none")
 	end
 
@@ -77,8 +78,9 @@ return function(req, cSocket, cread, cwrite)
 	end
 	cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
 
-	--local buf = tlspeek(cSocket)
+	local buf = tlspeek(cSocket)
 
+	l:debug "client handshake start"
 	---@type uv_tcp_t
 	local tSocket = ss(cSocket, {
 		ca = Cert,
