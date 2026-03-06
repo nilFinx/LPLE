@@ -3,12 +3,8 @@ local uverrs = require "app.uverrs"
 ---@type luvit.http
 local http = require "http"
 
-local url = require "ext.lua-url"
-
-local connections = {}
-
 return function (req, res)
-	local proto = req.url:match("^(%S+)://")
+	local proto = req.path:match("^(%S+)://")
 	if proto ~= "ws" and proto ~= "http" then
 		res.statusCode = 400
 		local rs = "Bad protocol"
@@ -16,8 +12,8 @@ return function (req, res)
 		res:finish(rs)
 		return
 	end
-	local dom, port = req.url:match("://(%S+):?(%d)*/")
-	local path = req.url:match("://%S+(/.+)$")
+	local dom, port = req.path:match("://(%S+):?(%d)*/")
+	local path = req.path:match("://%S+(/.+)$")
 	local opts = {
 		headers = req.headers,
 		host = dom,
