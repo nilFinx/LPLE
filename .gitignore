@@ -1,6 +1,7 @@
-/.vscode
-/deps
+/.vscode/
+/certs/
 /cfg.lua
-/certs
+
 /lple
 /lple.exe
+/deps/
