@@ -47,8 +47,11 @@ end
 
 local const = {
 	tlsHandshakeTypeClientHello		= 0x01,
+
+	tlsExtensionServerName			= 0x0000,
 	tlsExtensionALPN				= 0x0010,
 	tlsExtensionSupportedVersions	= 0x002b,
+
 	tlsVersion10 = 0x0301,
 	tlsVersion11 = 0x0302,
 	tlsVersion12 = 0x0303,
@@ -57,7 +60,6 @@ local const = {
 
 local function parseALPN(buf, info)
 	if buf:len() < 2 then
-		l:debug "ALPN too short"
 		return
 	end
 
@@ -69,7 +71,6 @@ local function parseALPN(buf, info)
 		pos = pos + 1
 		if pos + protoLen <= buf:len() then
 			local proto = (buf:sub(pos, pos + protoLen - 1))
-			if not info.alpnProtocols then info.alpnProtocols = {} end
 			table.insert(info.alpnProtocols, proto)
 
 			if proto == "h2" then
@@ -83,7 +84,6 @@ end
 
 local function parseSupportedVersions(buf, info)
 	if buf:len() < 1 then
-		l:debug "Supported version too short"
 		return
 	end
 
@@ -97,10 +97,31 @@ local function parseSupportedVersions(buf, info)
 		if version == const.tlsVersion13 then
 			info.supportsTLS13 = true
 		end
-		if not info.tlsVersions then info.tlsVersions = {} end
 		info.tlsVersions[version] = true
 		pos = pos + 2
 		i = i + 1
+	end
+end
+
+local function parseServerName(buf, info)
+	if buf:len() < 1 then
+		return
+	end
+
+	local listLen = int(buf:sub(1, 2))
+	local snType = int(at(buf, 3))
+	if snType ~= 0 then return end
+	local pos = 4
+
+	while pos < listLen + 3 and pos < buf:len() do
+		local snLen = int(buf:sub(pos, pos + 1))
+		pos = pos + 2
+		if pos + snLen <= buf:len() then
+			local sn = (buf:sub(pos, pos + snLen - 1))
+			table.insert(info.serverNames, sn)
+		end
+
+		pos = pos + snLen
 	end
 end
 
@@ -121,11 +142,11 @@ local function parseExtensions(buf, info)
 		local extData = buf:sub(pos, pos + extLen)
 
 		if extType == const.tlsExtensionALPN then
-			l:debug "got ALPN"
 			parseALPN(extData, info)
 		elseif extType == const.tlsExtensionSupportedVersions then
-			l:debug "got supported versions"
 			parseSupportedVersions(extData, info)
+		elseif extType == const.tlsExtensionServerName then
+			parseServerName(extData, info)
 		end
 
 		pos = pos + extLen
@@ -137,28 +158,31 @@ end
 ---@return string buffer
 ---@return info?
 ---@return string? err
+---@return boolean notHS
 local function tlspeek(socket)
 	---@class info
 	local info = {
 		supportsTLS13 = false,
 		supportsHTTP2 = false,
 		---@type table<integer, boolean>
-		tlsVersions = {}
+		tlsVersions = {},
+		serverNames = {},
+		alpnProtocols = {}
 	}
 	socket:read_stop()
 	local buf = wr(socket)()
-	if not buf then return "", nil, "no buffer" end
+	if not buf then return "", nil, "no data received", false end
 	local len = buf:len()
 
-	local _, err = pcall(function()
+	local _, err, nhs = pcall(function()
 		-- Minimum size check: 5 bytes for TLS record header + 4 bytes for handshake header
 		if len < 9 then
-			return "data too short to be ClientHello"
+			return "data too short to be ClientHello", true
 		end
 
 		-- Check TLS record header
 		if at(buf, 1) ~= hex("16") then -- Handshake record type
-			return "not a TLS handshake record"
+			return "not a TLS handshake record", true
 		end
 
 		-- Skip TLS version from record header (backwards compatibility version)
@@ -166,14 +190,14 @@ local function tlspeek(socket)
 		-- Get record length
 		local recordLen = bit.bor(bit.lshift(int(at(buf, 4)), 8), int(at(buf, 5)))
 		if len < recordLen + 5 then
-			return "incomplete TLS record"
+			return "incomplete TLS record", true
 		end
 
 		-- Parse handshake message
 
 		local pos = 6
 		if int(at(buf, pos)) ~= const.tlsHandshakeTypeClientHello then
-			return "not a ClientHello message"
+			return "not a ClientHello message", true
 		end
 
 		-- Skip handshake length (3 bytes...?)
@@ -186,10 +210,10 @@ local function tlspeek(socket)
 		info.tlsVersion = bit.bor(bit.lshift(int(at(buf , pos)), 8), int(at(buf, pos + 1)))
 		pos = pos + 2
 
-		--Skip client random (32 bytes)
+		-- Skip client random (32 bytes)
 		pos = pos + 32
 
-		--S kip session ID
+		-- Skip session ID
 		if len < pos + 1 then
 			return "truncated ClientHello at session ID"
 		end
@@ -215,7 +239,6 @@ local function tlspeek(socket)
 			pos = pos + 2
 
 			if len >= pos + extensionsLen - 1 then
-				l:debug "parsing extensions"
 				local err = parseExtensions(buf:sub(pos, pos + extensionsLen), info)
 				if err then
 					return err
@@ -225,9 +248,9 @@ local function tlspeek(socket)
 
 		info.isModernClient = info.supportsTLS13 or info.supportsHTTP2
 	end)
-	if err then return buf, nil, err end
+	if err then return buf, nil, err, nhs or false end
 
-	return buf, info
+	return buf, info, nil, false
 end
 
 return {
