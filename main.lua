@@ -29,8 +29,12 @@ require "app.cert"
 require "app.tls"
 require "app.fail2ban"
 
-if Config.mod.http then
-    require "app.http"
+if Config.mod.http.enabled then
+    require "app.http.main"
+end
+
+if Config.mod.directTCP.enabled then
+    require "app.directTCP.main"
 end
 
 if not next(stack) then

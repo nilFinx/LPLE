@@ -12,8 +12,8 @@ local c = {
 	key = "key.pem",
 	cert = "cert.pem",
 
-	---@type table<string,table<string,integer>>
-	-- nil any of this to disable
+	---@type table<string,table<string,integer|false>>
+	-- set any to false to disable
 	ports = {
 		http = {
 			plain = 51531,
@@ -30,6 +30,10 @@ local c = {
 		xmpp = { -- TODO
 			starttls = 51537,
 			secure = 51538
+		},
+		directTCP = {
+			--{"_xmpps-client._tcp.disroot.org", 51541} -- SRV record first, A record second
+			--{"disroot.org", 51542} -- Always A record
 		}
 	},
 
@@ -70,6 +74,10 @@ local c = {
 				webui_authenticate = true,
 				-- HTTP1.1 or older = auth immediately
 				httpver_auth = true
+			},
+			directTCP = {
+				-- Require HTTP auth to pass on the IP before it gets allowed
+				auth = true,
 			}
 		},
 
@@ -91,6 +99,8 @@ local c = {
 
 	mod = {
 		http = {
+			enabled = true,
+
 			-- Set http.webui or http.webui.hosts to nil to disable
 			webui = {
 				-- Body of when your request gets denied (either proxyless or fail2ban)
@@ -111,6 +121,9 @@ local c = {
 				-- Allow connection by hitting ip:port, not a specified webUI host through proxy
 				proxyless = false
 			},
+		},
+		directTCP = {
+			enabled = true,
 		}
 	},
 }
