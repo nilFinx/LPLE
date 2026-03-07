@@ -1,11 +1,10 @@
 local cn = require "coro-net"
 local ss = require "secure-socket"
 local tp = require "app.tlspeek"
-local uprox = require "app.uvproxy"
+local uvproxy = require "app.uvproxy"
 
 local tlspeek = tp.peek
 local tpconst = tp.const
-local gc = collectgarbage
 local request_cert = Config.secure.request_cer
 local maxver = Ver2Num((Config.secure.tls.max))
 local tp_max
@@ -43,16 +42,12 @@ return function(req, cSocket, cread, cwrite)
 	port = tonumber(port) or 443
 
 	if Config.log_ip then
-		l:info("CONNECT to %s:%s by %s (UA: %s)",
+		local ua = req["User-Agent"]
+		l:info("CONNECT to %s:%s by %s (%s)",
 			host, port,
 			---@diagnostic disable-next-line: undefined-field
 			cSocket:getpeername().ip,
-			req["User-Agent"] or "none")
-	end
-
-	local c, k = GenCert(host)
-	if not (c and k) then
-		return issh, issb
+			ua and ("UA: "..ua) or "No UA")
 	end
 
 	local read, write, sSocket = cn.connect({
@@ -62,20 +57,56 @@ return function(req, cSocket, cread, cwrite)
 		tls = true
 	})
 	if not (read and write and sSocket) then
-		local e = errs[write]
-		l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
-		if e then
-			return {
-				code = e[1],
-				reason = e[2],
-				{"Content-Length", errs[3]}
-			}, e[2]
+		read, write, sSocket = cn.connect({
+			port = port,
+			host = host,
+			hostname = host
+		})
+		if not (read and write and sSocket) then
+			local e = errs[write]
+			l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
+			if e then
+				return {
+					code = e[1],
+					reason = e[2],
+					{"Content-Length", errs[3]}
+				}, e[2]
+			end
+			return issh, issb
+		else
+			cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
+			uvproxy(cSocket, sSocket) return
 		end
-		return issh, issb
 	end
 	cSocket:write("HTTP/1.1 200 Connection Established\r\n\r\n")
 
-	local buf, info, err = tlspeek(cSocket)
+	local buf, info, err, nhs = tlspeek(cSocket)
+	if nhs then
+		l:warning "Not a TLS handshake, going with direct proxy"
+		sSocket:close_reset(function()
+			read, write, sSocket = cn.connect({
+				port = port,
+				host = host,
+				hostname = host
+			})
+			if not (read and write and sSocket) then
+				local e = errs[write]
+				l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
+				if e then
+					return {
+						code = e[1],
+						reason = e[2],
+						{"Content-Length", errs[3]}
+					}, e[2]
+				end
+				cSocket:close_reset()
+			else
+				write(buf)
+				uvproxy(cSocket, sSocket)
+			end
+		end)
+		return
+	end
 
 	if err then
 		l:warning("Failed to read handshake ("..err..")")
@@ -96,7 +127,13 @@ return function(req, cSocket, cread, cwrite)
 		sSocket:close_reset()
 	end
 
-	l:debug "client handshake start"
+	local c, k = GenCert((info and next(info.serverNames)) and info.serverNames or host)
+	if not (c and k) then
+		cSocket:close_reset()
+		sSocket:close_reset()
+	end
+
+
 	---@type uv_tcp_t
 	local tSocket = ss(cSocket, {
 		ca = Cert,
@@ -110,7 +147,8 @@ return function(req, cSocket, cread, cwrite)
 		host = host,
 		servername = host,
 
-		requestCert = request_cert,
+		requestCert = request_cert, -- another reminder to do this
+		ciphers = X_CIPHERS
 	})
 
 	if not tSocket then
@@ -118,8 +156,6 @@ return function(req, cSocket, cread, cwrite)
 		print("OpenSSL error: ", require "openssl".error())
 		return
 	end
-	l:debug "successful TLS handshake"
 
-	uprox(tSocket, sSocket)
-	gc()
+	uvproxy(tSocket, sSocket)
 end
