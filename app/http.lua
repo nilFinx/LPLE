@@ -161,9 +161,6 @@ local function onReq(req, body, socket)
 	end
 	local suc, a, b = xpcall(function()
 		if req.method == "CONNECT" then
-			if not HTTPAuth(req, socket) then
-				return auth_proxy, authb
-			end
 			if wus and whtest(req.path:match("^([^:]+)")) then
 				return wus(req)
 			end
