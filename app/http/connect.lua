@@ -143,7 +143,7 @@ return function(req, cSocket, cread, cwrite)
 		key = k:export(), -- But I do it because I apparently have to
 		server = true,
 
-		buffer = buf,
+		initialData = buf,
 
 		hostname = host,
 		host = host,
