@@ -1,3 +1,7 @@
+-- seanFinx crazy hack
+package.preload["http-codec"] = function()return require "MOD.http-codec" end
+package.preload["coro-http"] = function()return require "MOD.coro-http" end
+
 _G.LuaRequire = _G.require
 _G.require = require
 
