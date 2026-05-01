@@ -45,17 +45,27 @@ local function at(str, index)
 	return str:sub(index, index)
 end
 
+---@class tls_handshake_const
 local const = {
-	tlsHandshakeTypeClientHello		= 0x01,
+	handshakeTypeClientHello = 0x01,
+	extensions = {
+		serverName 			= 0x0000,
+		ALPN 				= 0x0010,
+		SupportedVersions 	= 0x002b
+	},
 
-	tlsExtensionServerName			= 0x0000,
-	tlsExtensionALPN				= 0x0010,
-	tlsExtensionSupportedVersions	= 0x002b,
-
-	tlsVersion10 = 0x0301,
-	tlsVersion11 = 0x0302,
-	tlsVersion12 = 0x0303,
-	tlsVersion13 = 0x0304
+	tlsVersions = {
+		v10 = 0x0301,
+		v11 = 0x0302,
+		v12 = 0x0303,
+		v13 = 0x0304,
+		map = {
+			[0x0301] = 1.0,
+			[0x0302] = 1.1,
+			[0x0303] = 1.2,
+			[0x0304] = 1.3
+		}
+	},
 }
 
 local function parseALPN(buf, info)
@@ -94,7 +104,7 @@ local function parseSupportedVersions(buf, info)
 	local i = 1
 	while i < listLen / 2 and pos + 2 <= buf:len() do
 		local version = bit.bor(bit.lshift(int(at(buf , pos)), 8), int(at(buf, pos + 1)))
-		if version == const.tlsVersion13 then
+		if version == const.tlsVersions.v13 then
 			info.supportsTLS13 = true
 		end
 		info.tlsVersions[version] = true
@@ -141,11 +151,11 @@ local function parseExtensions(buf, info)
 
 		local extData = buf:sub(pos, pos + extLen)
 
-		if extType == const.tlsExtensionALPN then
+		if extType == const.extensions.ALPN then
 			parseALPN(extData, info)
-		elseif extType == const.tlsExtensionSupportedVersions then
+		elseif extType == const.extensions.SupportedVersions then
 			parseSupportedVersions(extData, info)
-		elseif extType == const.tlsExtensionServerName then
+		elseif extType == const.extensions.serverName then
 			parseServerName(extData, info)
 		end
 
@@ -164,7 +174,7 @@ local function tlspeek(socket)
 	local info = {
 		supportsTLS13 = false,
 		supportsHTTP2 = false,
-		---@type table<integer, boolean>
+		---@type table<integer, boolean> integer can be matched to const.tlsVersion1x
 		tlsVersions = {},
 		serverNames = {},
 		alpnProtocols = {}
@@ -196,7 +206,7 @@ local function tlspeek(socket)
 		-- Parse handshake message
 
 		local pos = 6
-		if int(at(buf, pos)) ~= const.tlsHandshakeTypeClientHello then
+		if int(at(buf, pos)) ~= const.handshakeTypeClientHello then
 			return "not a ClientHello message", true
 		end
 
@@ -246,7 +256,10 @@ local function tlspeek(socket)
 			end
 		end
 
-		info.isModernClient = info.supportsTLS13 or info.supportsHTTP2
+		info.normalizedTLSVersions = {const.tlsVersions.map[info.tlsVersion]}
+		for v in pairs(info.tlsVersions or {}) do
+			table.insert(info.normalizedTLSVersions, const.tlsVersions.map[v])
+		end
 	end)
 	if err then return buf, nil, err, nhs or false end
 
