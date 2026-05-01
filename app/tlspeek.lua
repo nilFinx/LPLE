@@ -2,6 +2,8 @@
 -- The comments are literally 1-to-1.
 
 --[[
+LICENSE FOR AQUAPROXY - ALSO APPLIES TO FEW OTHER FILES ON LPLE(LIQUIDPROXY LUA EDITION).
+
 Copyright (c) 2024 Wowfunhappy
 	2015 Keith Rarick
 
