@@ -1,56 +1,43 @@
 local uverrs = require "app.uverrs"
 
----@type luvit.http
-local http = require "http"
+local ch = require "coro-http"
 
-return function (req, res)
-	local proto = req.path:match("^(%S+)://")
-	if proto ~= "ws" and proto ~= "http" then
-		res.statusCode = 400
-		local rs = "Bad protocol"
-		res:setHeader("Content-Length", tostring(#rs))
-		res:finish(rs)
-		return
+local bpb = "Bad protocol"
+local bph = {
+	code = 400,
+	{"Content-Length", tostring(bpb:len())}
+}
+
+-- Tiny request wrapper
+local function go(req)
+	local headers = {}
+
+	for k, h in pairs(req) do
+		if type(k) == "number" then
+			table.insert(headers, {h[1], h[2]})
+		end
 	end
-	local dom, port = req.path:match("://(%S+):?(%d)*/")
-	local path = req.path:match("://%S+(/.+)$")
-	local opts = {
-		headers = req.headers,
-		host = dom,
-		method = req.method,
-		path = path,
-		port = port or 80
-	}
 
-	local c = http.request(opts, function(cres)
-		res.headers = cres.headers
-		res.statusCode = cres.statusCode
-		cres:pipe(res)
-	end)
+	local suc, res, body = pcall(ch.request, req.method, req.path, headers, body, {
+		followRedirects = false
+	})
 
-	c:done()
-	local suc = true
-	local rs = "hi"
 	if suc then
-		---@diagnostic disable-next-line: param-type-mismatch
-		--[[for k, v in pairs(rs) do
-			if tonumber(k) then
-				res.headers[k] = v
-			else
-				res[k] = v
-			end
-		end
-		p(req)
-		local c = r:get("Connection")
-		if c then
-			--res:
-		end
-		res:finish(body)]]
+		return res, body
 	else
-		res.statusCode = 502
-		local et = "LiquidProxy: "..(uverrs[rs] or rs).."\r\n"
-		res:setHeader("Content-Type", "text/plain")
-		res:setHeader("Content-Length", tostring(et:len()))
-		res:finish(et)
+		---@diagnostic disable-next-line: undefined-field
+		return {code = 502, errored_out = true, {"Content-Length", res:len()}}, res
+	end
+end
+
+return function (req, body)
+	local proto = req.path:match("^(%S+)://")
+	--TODO: websocket
+	if proto ~= "ws" and proto ~= "http" then
+		return bph, bpb
+	end
+
+	if not HTTPMatches[req.path:match("http://([^/]+)/")] then
+		return go(req)
 	end
 end
