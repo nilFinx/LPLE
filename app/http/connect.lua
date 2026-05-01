@@ -57,14 +57,14 @@ return function(req, cSocket, cread, cwrite)
 		tls = true
 	})
 	if not (read and write and sSocket) then
-		read, write, sSocket = cn.connect({
+		read, write, sSocket = cn.connect({ -- Won't work unless the server refuses.
 			port = port,
 			host = host,
 			hostname = host
 		})
 		if not (read and write and sSocket) then
 			local e = errs[write]
-			l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
+			l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
 			if e then
 				return {
 					code = e[1],
@@ -91,7 +91,7 @@ return function(req, cSocket, cread, cwrite)
 			})
 			if not (read and write and sSocket) then
 				local e = errs[write]
-				l:error("Error connecting to server: "..(e and ("%s (%s)"):format(e[2], write) or write))
+				l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
 				if e then
 					return {
 						code = e[1],
@@ -125,6 +125,8 @@ return function(req, cSocket, cread, cwrite)
 		l:info("Post-connect auth failed ("..cSocket:getpeername().ip..")")
 		cSocket:close_reset()
 		sSocket:close_reset()
+	else
+		RemoveIP(cSocket:getpeername().ip)
 	end
 
 	local c, k = GenCert((info and next(info.serverNames)) and info.serverNames or host)
@@ -156,6 +158,8 @@ return function(req, cSocket, cread, cwrite)
 		print("OpenSSL error: ", require "openssl".error())
 		return
 	end
+
+	l:debug("Properly connected to "..host)
 
 	uvproxy(tSocket, sSocket)
 end
