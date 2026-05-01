@@ -1,3 +1,4 @@
+package.preload["http-codec"] = function()return require "MOD.http-codec" end -- hacky wucky
 local ch = require "coro-http"
 local fs = require "fs"
 ---@diagnostic disable-next-line: undefined-field
@@ -8,8 +9,6 @@ local mod_secure = Config.secure.mod.http
 local mod = Config.mod.http
 
 local webui, wus, whtest
-local authpls = "Please authenticate :)"
-local authplsl = tostring(authpls:len())
 if mod.webui then
 	webui, wus = (table.unpack or unpack)(require "app.http.webui")
 
@@ -47,14 +46,6 @@ if fs.existsSync "scripts" then
 	end
 end
 
--- 0.3, 1.0, 1.1, 1.2, 1.3
-function Ver2Num(ver)
-	if ver:sub(1,4) == "TLSv" then
-		return tonumber(ver:sub(5))
-	else -- SSL
-		return tonumber("0."..ver:sub(5))
-	end
-end
 local maxver = Ver2Num((Config.secure.tls.max))
 
 local function haw(req, socket)
