@@ -39,12 +39,15 @@ WARNING: This has been uploaded publicly for sake of tracking my progress, and b
 
 ## New features (compared to LiquidProxy)
 
+* More config options. Like way more.
+* Improved config schema. Goodbye awkward text files, hello lua file!
+* TODO: Fill more
 
 ## RISK WARNING
 
 Do NOT use any third party instanced of LiquidProxy (Lua Edition or not), unless you trust them. Due to nature of TLS MitM proxies, the server owner is able to see everything that goes through the proxy. HTTPS WEBSITES WILL STILL BE INTERCEPTED! THERE IS NO WAY TO DEFEND AGAINST THIS RISK, OTHER THAN TO HOST YOUR OWN PROXY.
 
-Exposed servers = all local IPs are exposed. This is especially dangerous on certain VPSes because yes all users should be able to contact machine management APIs somehow (IIRC). Fix on that is planned but isn't here yet, due to complexity of implement such measures perfectly, only to pray that the user does not have a modified hosts file.
+Exposed server = all local IPs are exposed. This is especially dangerous on certain VPSes because yes all users should be able to contact machine management APIs somehow (IIRC). Fix on that is planned but isn't here yet, due to complexity of implement such measures perfectly, only to pray that the user does not have a modified hosts file.
 
 ## Documentation
 
