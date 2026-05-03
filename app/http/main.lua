@@ -1,4 +1,3 @@
-package.preload["http-codec"] = function()return require "MOD.http-codec" end -- hacky wucky
 local ch = require "coro-http"
 local fs = require "fs"
 ---@diagnostic disable-next-line: undefined-field
@@ -9,7 +8,8 @@ local mod_secure = Config.secure.mod.http
 local mod = Config.mod.http
 
 local webui, wus, whtest
-if mod.webui then
+if mod.webui.enabled then
+	---@diagnostic disable-next-line: deprecated
 	webui, wus = (table.unpack or unpack)(require "app.http.webui")
 
 	local wuih = mod.webui.hosts
@@ -26,6 +26,7 @@ end
 
 HTTPCatchAlls = {}
 HTTPMatches = {}
+-- http match file name
 local hmfn = {}
 
 if fs.existsSync "scripts" then
@@ -49,6 +50,9 @@ end
 local maxver = Ver2Num((Config.secure.tls.max))
 
 local function haw(req, socket)
+	if Config.secure.forcepass then
+		return true
+	end
 	if socket.ssl then
 		if Ver2Num(req.socket.ssl:get("version")) <= maxver then
 			return true
@@ -84,6 +88,7 @@ local function haw(req, socket)
 	l:debug "Auth fail: Unspecified" return false
 end
 function HTTPAuth(req, socket)
+	if Config.secure.forcepass then return true end
 	local ip = socket:getpeername().ip
 	if AllowedIPs[ip] then return true end
 	if haw(req, socket) then
@@ -155,6 +160,9 @@ local function onReq(req, body, socket)
 			if wus and whtest(req.path:match("^([^:]+)")) then
 				return wus(req)
 			end
+			if not (authpass or Config.secure.tls.pass_auth) then
+				return auth_proxy, authb
+			end
 			return connectproxy(req, socket)
 		else
 			if req.path:sub(1, 7) == "http://" then -- This can never be HTTPS
@@ -187,7 +195,7 @@ local function onReq(req, body, socket)
         return debug.traceback(err, 1)
 	end)
 	if not suc then
-		l:error(a)
+		l:error("HTTP server error: "..(a or "no error??"))
 		return issh, issb
 	end
 	---@diagnostic disable-next-line: return-type-mismatch
