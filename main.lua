@@ -37,7 +37,7 @@ if Config.mod.http.enabled then
     require "app.http.main"
 end
 
-if Config.mod.directTCP.enabled then
+if Config.ports.directTCP and next(Config.ports.directTCP) then
     require "app.directTCP.main"
 end
 
