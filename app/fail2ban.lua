@@ -19,5 +19,7 @@ end
 -- auth pass
 function RemoveIP(ip)
 	leaderboard[ip] = nil
-	AllowedIPs[ip] = true
+	if Config.secure.fail2ban_whitelist_on_success then
+		AllowedIPs[ip] = true
+	end
 end

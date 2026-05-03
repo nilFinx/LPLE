@@ -54,7 +54,8 @@ return function(req, cSocket, cread, cwrite)
 		port = port,
 		host = host,
 		hostname = host,
-		tls = true
+		tls = true,
+		timeout = Config.tls_timeout
 	})
 	if not (read and write and sSocket) then
 		read, write, sSocket = cn.connect({ -- Won't work unless the server refuses.
@@ -154,8 +155,7 @@ return function(req, cSocket, cread, cwrite)
 	})
 
 	if not tSocket then
-		l:error("Error when upgrading (usually client issue)")
-		print("OpenSSL error: ", require "openssl".error())
+		l:error("Error when upgrading (usually client issue)\nOpenSSL error: "..(require "openssl".error() or ""))
 		return
 	end
 

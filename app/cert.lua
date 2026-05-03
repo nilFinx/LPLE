@@ -1,6 +1,7 @@
 local fs = require "fs"
-Key = fs.readFileSync("certs/"..Config.key)
-Cert = fs.readFileSync("certs/"..Config.cert)
+local pathJoin = require "luvi".path.join
+Key = fs.readFileSync(pathJoin(Config.certs.path, Config.certs.key))
+Cert = fs.readFileSync(pathJoin(Config.certs.path, Config.certs.cert))
 
 if not (Key and Cert) then l:error "Certificate or key file not found" os.exit(1) end
 
@@ -49,7 +50,7 @@ function GenCert(names)
 	req:extensions({x509.extension.new_extension(san)})
 	req:public(ckey)
 
-	req:sign(ckey, "sha256")
+	req:sign(ckey, Config.secure.tls.hash_type)
 
 	c = req:to_x509(ckey, 1)
 	c:serial(openssl.bn.random(128))
@@ -57,7 +58,7 @@ function GenCert(names)
 	c:validat(now - One.hour, now + One.hour * 24)
 	c:extensions({x509.extension.new_extension(san)})
 
-	c:sign(cakey, ca, "sha256")
+	c:sign(cakey, ca, Config.secure.tls.hash_type)
 
 	ccache[names[1]] = {c, ckey}
 
