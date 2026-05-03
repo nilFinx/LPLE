@@ -65,5 +65,6 @@ Many parts of the code is taken from [gh:Wowfunhappy/AquaProxy](https://github.c
 
 # TODO
 
-More log_ip stuff.
-
+* More log_ip stuff
+* username_whitelist and username_doubleat_pass
+* request_cert
