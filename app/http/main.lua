@@ -31,8 +31,9 @@ local hmfn = {}
 
 if fs.existsSync "scripts" then
 	for _, file in pairs(fs.readdirSync "scripts") do
-		if file:find("%.lua$") then
-			local func, rules = require("scripts."..file:match("(.+)%.lua"))
+		if file:sub(-4) == ".lua" then
+			---@diagnostic disable-next-line deprecated
+			local func, rules = (table.unpack or unpack)(require("scripts."..file:sub(1, -5)))
 			if func then table.insert(HTTPCatchAlls, func) end
 			for host, func in pairs(rules or {}) do
 				if hmfn[host] then
@@ -160,7 +161,7 @@ local function onReq(req, body, socket)
 			if wus and whtest(req.path:match("^([^:]+)")) then
 				return wus(req)
 			end
-			if not (authpass or Config.secure.tls.pass_auth) then
+			if not HTTPAuth(req, socket) and not Config.secure.tls.pass_auth then
 				return auth_proxy, authb
 			end
 			return connectproxy(req, socket)
@@ -177,7 +178,7 @@ local function onReq(req, body, socket)
 					end
 					return webui(req)
 				end
-				return plainproxy(req, body)
+				return plainproxy(req, body, socket)
 			else
 				if req.path:sub(1, 1) ~= "/" or not (webui and mod.webui.proxyless) then
 					return noh, nob
