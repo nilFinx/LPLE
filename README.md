@@ -63,8 +63,9 @@ cydia.css uses CSS from [cydia.saurik.com](https://cydia.saurik.com/), and few p
 
 Many parts of the code is taken from [gh:Wowfunhappy/AquaProxy](https://github.com/Wowfunhappy/AquaProxy). The license is available under [app/tlspeek.lua](./app/tlspeek.lua).
 
-# TODO
+## TODO
 
 * More log_ip stuff
 * username_whitelist and username_doubleat_pass
 * request_cert
+* Few stuff in modern config (redirect, bipas, etc)
