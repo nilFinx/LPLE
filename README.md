@@ -1,8 +1,5 @@
-# LiquidProxy Lua Edition
-
-Note: This repository is available in [tangled](https://tangled.org/nilfinx.tngl.sh/LPLE), [Codeberg](https://codeberg.org/nilfinx/LPLE) and [GitHub](https://github.com/nilFinx/LPLE).
-
-GitHub is potentially being deprecated. Avoid linking whenever possible.
+# DEAD - Moved to Codeberg/tangled
+# This repository is available in [tangled](https://tangled.org/nilfinx.tngl.sh/LPLE), [Codeberg](https://codeberg.org/nilfinx/LPLE)
 
 This is [LiquidProxy](https://tangled.org/nilfinx.tngl.sh/liquidproxy), but with Lua, and not Go.
 
