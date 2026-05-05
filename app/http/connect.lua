@@ -9,7 +9,7 @@ local request_cert = Config.secure.request_cer
 local maxver = Ver2Num((Config.secure.tls.max))
 local tp_max
 if maxver == 0.3 then
-	tp_max = tpconst.tlsVersion10 - 1 -- NOT RECOMMENDED
+	tp_max = tpconst.tlsVersions.v10 - 1 -- NOT RECOMMENDED
 else
 	tp_max = tpconst["tlsVersion"..tostring(maxver):gsub("%.", "")]
 end
