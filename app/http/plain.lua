@@ -9,7 +9,8 @@ local bph = {
 }
 
 -- Tiny request wrapper
-local function go(req)
+---@class gofunction
+local function go(req, body)
 	local headers = {}
 
 	for k, h in pairs(req) do
@@ -30,14 +31,21 @@ local function go(req)
 	end
 end
 
-return function (req, body)
+---@param socket uv_tcp_t
+return function (req, body, socket)
 	local proto = req.path:match("^(%S+)://")
 	--TODO: websocket
 	if proto ~= "ws" and proto ~= "http" then
 		return bph, bpb
 	end
 
-	if not HTTPMatches[req.path:match("http://([^/]+)/")] then
-		return go(req)
+	local match = HTTPMatches[req.path:match("http://([^/]+)/")]
+	if not match then
+		l:debug("Plain proxy to "..req.path)
+		return go(req, body)
+	else
+		l:debug("Plain proxy intercepted by a script to "..req.path)
+		req.path = req.path:match("http://[^/]+(/.+)$")
+		return match(req, body, go, socket)
 	end
 end
