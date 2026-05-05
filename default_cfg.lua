@@ -43,7 +43,6 @@ local c = {
 		directTCP = {
 			--{"_xmpps-client._tcp.disroot.org", 51541} -- SRV record first, A record second
 			--{"disroot.org", 51542} -- Always A record
-			{"example.com", 443}
 		}
 	},
 
@@ -132,7 +131,7 @@ local c = {
 				-- Require HTTP auth to pass on the IP before it gets allowed, or the TLS version to match
 				auth = true,
 				
-				---@type tabble<string>
+				---@type table<string>
 				whitelisted = {
 					-- "chat.disroot.org:5223"
 				}
