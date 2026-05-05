@@ -1,6 +1,7 @@
 local cn = require "coro-net"
 local ss = require "secure-socket"
 local tp = require "app.tlspeek"
+local uverrs = require "app.uverrs"
 local uvproxy = require "app.uvproxy"
 
 local tlspeek = tp.peek
@@ -42,8 +43,8 @@ local function server(host, port)
 					hostname = host
 				})
 				if not (read and write and sSocket) then
-					local e = errs[write]
-					l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
+					local e = uverrs[write]
+					l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e, write) or write))
 					cSocket:close_reset()
 				else
 					uvproxy(cSocket, sSocket)
@@ -61,8 +62,8 @@ local function server(host, port)
 						hostname = host
 					})
 					if not (read and write and sSocket) then
-						local e = errs[write]
-						l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
+						local e = uverrs[write]
+						l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e, write) or write))
 						cSocket:close_reset()
 					else
 						uvproxy(cSocket, sSocket)
@@ -96,7 +97,7 @@ local function server(host, port)
 				host = host,
 				servername = host,
 		
-				requestCert = request_cert, -- another reminder to do this
+				requestCert = Config.secure.http.requestCert, -- another reminder to do this
 				ciphers = X_CIPHERS
 			})
 		
@@ -113,7 +114,6 @@ local function server(host, port)
 		end)
 		if not suc then
 			l:error("DirectTCP error: "..(a or "no error??"))
-			return issh, issb
 		end
 	end)
 end

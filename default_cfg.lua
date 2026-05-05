@@ -21,25 +21,30 @@ local c = {
 		cert = "cert.pem",
 	},
 
-	---@type table<string,table<string,integer|false>>
+	---@type table<string,table>
 	-- set any to false to disable
 	ports = {
+		---@type table<string,integer|false>
 		http = {
 			plain = 51531,
 			secure = 51532
 		},
+		---@type table<string,integer|false>
 		imap = { -- TODO
 			starttls = 51533,
 			secure = 51534
 		},
+		---@type table<string,integer|false>
 		smtp = { -- TODO
 			starttls = 51535,
 			secure = 51536,
 		},
+		---@type table<string,integer|false>
 		xmpp = { -- TODO
 			starttls = 51537,
 			secure = 51538
 		},
+		---@type table<table<string, integer>>
 		directTCP = {
 			--{"_xmpps-client._tcp.disroot.org", 51541} -- SRV record first, A record second
 			--{"disroot.org", 51542} -- Always A record

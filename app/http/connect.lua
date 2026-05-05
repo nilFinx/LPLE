@@ -1,6 +1,7 @@
 local cn = require "coro-net"
 local ss = require "secure-socket"
 local tp = require "app.tlspeek"
+local uverrs = require "app.uverrs"
 local uvproxy = require "app.uvproxy"
 
 local tlspeek = tp.peek
@@ -16,18 +17,6 @@ end
 
 -- Keeping for later
 --local D_CIPHERS = require "deps.tls.common".DEFAULT_CIPHERS
-
-local errs = {
-	EAI_NONAME = {404, "Cannot resolve host"},
-	ECONNREFUSED = {502, "Connection refused"},
-	ETIMEDOUT = {504, "Timed out"}
-}
-
-errs.EAI_NODATA = errs.EAI_NONAME
-
-for _, t in pairs(errs) do
-	t[3] = tostring(t[2]:len())
-end
 
 local issb = "Internal Server Error\r\n"
 local issh = {
@@ -64,14 +53,14 @@ return function(req, cSocket, cread, cwrite)
 			hostname = host
 		})
 		if not (read and write and sSocket) then
-			local e = errs[write]
+			local e = uverrs[write]
 			l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
 			if e then
 				return {
-					code = e[1],
-					reason = e[2],
-					{"Content-Length", errs[3]}
-				}, e[2]
+					code = uverrs.codes[write],
+					reason = e,
+					{"Content-Length", e:len()}
+				}, e
 			end
 			return issh, issb
 		else
@@ -91,14 +80,14 @@ return function(req, cSocket, cread, cwrite)
 				hostname = host
 			})
 			if not (read and write and sSocket) then
-				local e = errs[write]
+				local e = uverrs[write]
 				l:error("Error connecting to server non-TLS: "..(e and ("%s (%s)"):format(e[2], write) or write))
 				if e then
 					return {
-						code = e[1],
-						reason = e[2],
-						{"Content-Length", errs[3]}
-					}, e[2]
+						code = e,
+						reason = e:len(),
+						{"Content-Length", uverrs.codes[write]}
+					}, e
 				end
 				cSocket:close_reset()
 			else
