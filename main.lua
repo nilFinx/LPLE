@@ -33,12 +33,20 @@ require "app.cert"
 require "app.tls"
 require "app.fail2ban"
 
+local suc, a = xpcall(function()
 if Config.mod.http.enabled then
     require "app.http.main"
 end
 
 if Config.ports.directTCP and next(Config.ports.directTCP) then
     require "app.directTCP.main"
+end
+end, function(err)
+    return debug.traceback(err, 1)
+end)
+if not suc then
+    l:error("Launch error: "..(a or "no error??"))
+    os.exit(1)
 end
 
 if not next(stack) then
